@@ -126,7 +126,11 @@ venv.bak/
 dmypy.json
 
 # Pyre type checker
+*.rar
+*.tar
+*.zip
 .pyre/
+data/*
 data/training/patient0001/patient0001_2CH_ED_gt.mhd
 data/training/patient0001/patient0001_2CH_ED_gt.raw
 data/training/patient0001/patient0001_2CH_ED.mhd
@@ -10040,3 +10044,6 @@ usnet/variables/variables.data-00000-of-00001
 usnet/variables/variables.index
 data/training/patient0001/Info_2CH.cfg
 data/training/patient0001/Info_4CH.cfg
+logs/exp02/train/events.out.tfevents.1645469550.SEPEHR-LAPTOP.16080.5331.v2
+logs/exp02/train/events.out.tfevents.1645469788.SEPEHR-LAPTOP.5796.1543.v2
+logs/exp02/train/events.out.tfevents.1645470024.SEPEHR-LAPTOP.12960.1543.v2
