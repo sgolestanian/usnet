@@ -104,8 +104,6 @@ def tf_read_raw_image(image_path):
         return dims_correct
     imgbytes = tf.io.decode_raw(imgfile, out_type=tf.uint8)
     img = tf.reshape(imgbytes, correct_dims(img_dims))
-    img = tf.cast(img, tf.float32)
-    img = (img - tf.math.reduce_min(img))/(tf.math.reduce_max(img) - tf.math.reduce_min(img))
     return img.numpy()
 
 
@@ -135,11 +133,12 @@ def tf_read_mask_image(image_path):
         return dims_correct
     imgbytes = tf.io.decode_raw(imgfile, out_type=tf.uint8)
     img = tf.reshape(imgbytes, correct_dims(img_dims))
-    img = tf.cast(img, tf.uint8)
-    img = tf.squeeze(img)
-    return tf.one_hot(img, depth=4).numpy().tolist()
+    return img
 
 
+def tf_write_image(path, x):
+    img = tf.io.encode_png(x)
+    tf.io.write_file(path, img)
 
 subset = 'train'
 for patient in train_patients:
@@ -150,6 +149,8 @@ for patient in train_patients:
         DATA_INSTANCE['patient_metadata'] = read_cfg(patient, view)
         DATA_INSTANCE['view'] = view
         for time in TIMING:
+            data_name = f"{DATA_INSTANCE['patient_id']+'_'+view+'_'+time}"
+
             DATA_INSTANCE['TIMING'] = time
             DATA_INSTANCE['IMG_FILE'] = DATA_INSTANCE['patient_id']+'_'+view+'_'+time+'.raw'
             DATA_INSTANCE['IMGMHD_FILE'] = DATA_INSTANCE['patient_id']+'_'+view+'_'+time+'.mhd'
@@ -157,10 +158,20 @@ for patient in train_patients:
             DATA_INSTANCE['MASKMHD_FILE'] = DATA_INSTANCE['patient_id']+'_'+view+'_'+time+'_gt.mhd'
             DATA_INSTANCE['IMG_DIMS'] = tf_read_mhd_data(path.join(patient, DATA_INSTANCE['IMGMHD_FILE'])).tolist()
 
+            image = tf_read_raw_image(path.join(patient, DATA_INSTANCE['IMG_FILE']))
+            data_image_name = data_name+'.png'
+            DATA_INSTANCE['IMG_FILE'] = data_image_name
+            tf_write_image(path.join(dataset_path, data_image_name), image)
+
+            mask = tf_read_mask_image(path.join(patient, DATA_INSTANCE['MASK_FILE']))
+            data_mask_name = data_name+'_gt.png'
+            DATA_INSTANCE['MASK_FILE'] = data_mask_name
+            tf_write_image(path.join(dataset_path, data_mask_name), mask)
+
             DATASET_METADATA['train_data_count'] += 1
-            DATA_FILNAME = f"{DATA_INSTANCE['patient_id']+'_'+view+'_'+time}.json"
-            DATASET_METADATA['list_files'].append(DATA_FILNAME)
-            write_json(DATA_INSTANCE, path.join(dataset_path, DATA_FILNAME))
+            
+            DATASET_METADATA['list_files'].append(data_name+'.json')
+            write_json(DATA_INSTANCE, path.join(dataset_path, data_name+'.json'))
 
 
 subset = 'validation'
@@ -172,6 +183,8 @@ for patient in validation_patients:
         DATA_INSTANCE['patient_metadata'] = read_cfg(patient, view)
         DATA_INSTANCE['view'] = view
         for time in TIMING:
+            data_name = f"{DATA_INSTANCE['patient_id']+'_'+view+'_'+time}"
+
             DATA_INSTANCE['TIMING'] = time
             DATA_INSTANCE['IMG_FILE'] = DATA_INSTANCE['patient_id']+'_'+view+'_'+time+'.raw'
             DATA_INSTANCE['IMGMHD_FILE'] = DATA_INSTANCE['patient_id']+'_'+view+'_'+time+'.mhd'
@@ -179,10 +192,20 @@ for patient in validation_patients:
             DATA_INSTANCE['MASKMHD_FILE'] = DATA_INSTANCE['patient_id']+'_'+view+'_'+time+'_gt.mhd'
             DATA_INSTANCE['IMG_DIMS'] = tf_read_mhd_data(path.join(patient, DATA_INSTANCE['IMGMHD_FILE'])).tolist()
 
-            DATASET_METADATA['validation_data_count']+=1
-            DATA_FILNAME = f"{DATA_INSTANCE['patient_id']+'_'+view+'_'+time}.json"
-            DATASET_METADATA['list_files'].append(DATA_FILNAME)
-            write_json(DATA_INSTANCE, path.join(dataset_path, DATA_FILNAME))
+            image = tf_read_raw_image(path.join(patient, DATA_INSTANCE['IMG_FILE']))
+            data_image_name = data_name+'.png'
+            DATA_INSTANCE['IMG_FILE'] = data_image_name
+            tf_write_image(path.join(dataset_path, data_image_name), image)
+
+            mask = tf_read_mask_image(path.join(patient, DATA_INSTANCE['MASK_FILE']))
+            data_mask_name = data_name+'_gt.png'
+            DATA_INSTANCE['MASK_FILE'] = data_mask_name
+            tf_write_image(path.join(dataset_path, data_mask_name), mask)
+
+            DATASET_METADATA['validation_data_count'] += 1
+            
+            DATASET_METADATA['list_files'].append(data_name+'.json')
+            write_json(DATA_INSTANCE, path.join(dataset_path, data_name+'.json'))
 
 
 
