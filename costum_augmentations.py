@@ -14,11 +14,23 @@ class SaltPepperNoise(tf.keras.layers.Layer):
     def build(self, input_shape):
         return super(SaltPepperNoise, self).build(input_shape)
     
-    def __call__(self, x, training=False):
+    def call(self, x, training=False):
         x = tf.convert_to_tensor(x)
-        select_mask = K.random_bernoulli(self.input_shape, p=self.noise_probability)
-        saltpepper_mask = K.random_bernoulli(self.input_shape, p=self.pepper_probability)
+        input_shape = tf.shape(x)
 
-        y = tf.matmul(x, (1-select_mask)) + tf.matmul(saltpepper_mask, select_mask)
+        select_mask = K.random_bernoulli(input_shape, p=self.noise_probability)
+        select_mask = tf.math.reduce_sum(select_mask, axis=-1, keepdims=True)
+        select_mask = tf.clip_by_value(select_mask, clip_value_min=0, clip_value_max=1)
+        select_mask = tf.repeat(select_mask, input_shape[-1], axis=-1)
+
+        saltpepper_mask = K.random_bernoulli(input_shape, p=self.pepper_probability)
+        saltpepper_mask = tf.math.reduce_sum(saltpepper_mask, axis=-1, keepdims=True)
+        saltpepper_mask = tf.clip_by_value(saltpepper_mask, clip_value_min=0, clip_value_max=1)
+        saltpepper_mask = tf.repeat(saltpepper_mask, input_shape[-1], axis=-1)
+
+        print(tf.shape(select_mask))
+        print(tf.shape(saltpepper_mask))
+
+        y = tf.multiply(x, (1-select_mask)) + tf.multiply(saltpepper_mask, select_mask)
 
         return K.in_train_phase(y, x, training=training)
