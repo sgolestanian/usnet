@@ -130,6 +130,7 @@ dmypy.json
 *.tar
 *.zip
 .pyre/
+results/*
 data/*
 data/training/patient0001/patient0001_2CH_ED_gt.mhd
 data/training/patient0001/patient0001_2CH_ED_gt.raw
