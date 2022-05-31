@@ -1,9 +1,10 @@
 from argparse import ArgumentError
 from email.mime import message
 import tensorflow as tf
+import numpy as np
 
 
-def count_true_positive(label, prediction):
+def count_true_positives(label, prediction):
     """
     This function counts true positive values.
     """
@@ -39,42 +40,55 @@ def count_false_negatives(label, prediction):
 
 class DiceCoefficient(tf.keras.metrics.Metric):
 
-    def __init__(self, class_id=0, name='dice_coeff',**kwargs):
+    def __init__(self, name='dice_coeff',**kwargs):
         super(DiceCoefficient, self).__init__(name=name, **kwargs)
-        self.sub_metrics = [
-                            tf.keras.metrics.Precision(name='precision'),
-                            tf.keras.metrics.Recall(name='recall')
-        ]
-        self.class_id = class_id
-        self.true_positive = tf.Variable(0)
-        self.false_positive = tf.Variable(0)
-        self.true_negative = tf.Variable(0)
-        self.false_negative = tf.Variable(0)
-        self.dice_values = tf.Variable(0)
-        self.batch_dices = []
+        self.dices = []
 
-    def update_state(self, y_true, y_pred, sample_weight=None):
-        pred_mask = tf.argmax(y_pred, axis=-1)
-        pred_mask = tf.math.equal(pred_mask, self.class_id)
-        label_mask = tf.argmax(y_true, axis=-1)
-        label_mask = tf.math.equal(label_mask, self.class_id)
+    def update_state(self, y_true:tf.Tensor, y_pred:tf.Tensor, sample_weight=None):
+        """
+        Calculates dice metric for one batch of image-masks.
+        """
+        print(tf.shape(y_true))
+        print(tf.shape(y_pred))
+        for y_true_instance, y_pred_instance in zip(y_true, y_pred):
+            self.dices.append(self.calculate_dice_image(y_true=y_true_instance, y_pred=y_pred_instance))
         
-        self.true_positive.assign_add(count_true_positive(label=label_mask, prediction=pred_mask))
-        self.false_positive.assign_add(count_false_positives(label=label_mask, prediction=pred_mask))
-        self.true_negative.assign_add(count_true_negatives(label=label_mask, prediction=pred_mask))
-        self.false_negative.assign_add(count_false_negatives(label=label_mask, prediction=pred_mask))
-        
+    def calculate_dice_image(self, y_true:tf.Tensor, y_pred:tf.Tensor) -> float:
+        """
+        Calculates dice metric for a single image-mask set.
+        """
+        num_classes = tf.shape(y_pred)[-1]
+        dice_per_class = np.zeros((num_classes,))
+        for class_id in range(num_classes):
+            dice_per_class[class_id] = self.calculate_dice_class(y_true=y_true, y_pred=y_pred, class_id=class_id)
+            print(dice_per_class[class_id])
 
-    def calculate_dice(self):
-        return (2*self.true_positive)/(2*self.true_positive + self.false_negative + self.false_positive)
-        
+        return tf.math.reduce_mean(dice_per_class)
 
+    def calculate_dice_class(self, y_true:tf.Tensor, y_pred:tf.Tensor, class_id:int) -> float:
+        """
+        Calculates dice metric for one class of a single instance.
+        """
+        y_pred = tf.math.equal(y_pred, class_id)
+        y_pred = tf.cast(y_pred, dtype=tf.bool)
+        y_true = tf.math.equal(y_true, class_id)
+        y_true = tf.cast(y_true, dtype=tf.bool)
+
+        print(tf.shape(y_pred))
+        print(tf.shape(y_true))
+
+        tp = count_true_positives(label=y_true, prediction=y_pred)
+        tn = count_true_negatives(label=y_true, prediction=y_pred)
+        fp = count_false_positives(label=y_true, prediction=y_pred)
+        fn = count_false_negatives(label=y_true, prediction=y_pred)
+
+        return (2*tp)/(fn + 2*tp + fp)
+        
     def reset_state(self):
-        self.true_positive.assign(0)
-        self.false_positive.assign(0)
-        self.true_negative.assign(0)
-        self.false_negative.assign(0)
+        self.dices = []
         
 
     def result(self):
-        return self.calculate_dice()
+        if len(self.dices) == 0:
+            return 0
+        return tf.math.reduce_mean(self.dices)
