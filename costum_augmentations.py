@@ -28,9 +28,6 @@ class SaltPepperNoise(tf.keras.layers.Layer):
         saltpepper_mask = tf.clip_by_value(saltpepper_mask, clip_value_min=0, clip_value_max=1)
         saltpepper_mask = tf.repeat(saltpepper_mask, input_shape[-1], axis=-1)
 
-        print(tf.shape(select_mask))
-        print(tf.shape(saltpepper_mask))
-
         y = tf.multiply(x, (1-select_mask)) + tf.multiply(saltpepper_mask, select_mask)
 
         return K.in_train_phase(y, x, training=training)
