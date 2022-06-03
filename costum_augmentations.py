@@ -34,3 +34,10 @@ class SaltPepperNoise(tf.keras.layers.Layer):
         y = tf.multiply(x, (1-select_mask)) + tf.multiply(saltpepper_mask, select_mask)
 
         return K.in_train_phase(y, x, training=training)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "noise_probability":self.noise_probability,
+            "pepper_probability":self.pepper_probability,
+        })
