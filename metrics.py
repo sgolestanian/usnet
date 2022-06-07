@@ -48,8 +48,10 @@ class DiceCoefficient(tf.keras.metrics.Metric):
         """
         Calculates dice metric for one batch of image-masks.
         """
-        print(tf.shape(y_true))
-        print(tf.shape(y_pred))
+        print(tf.shape(y_true)) # for debug only
+        print(tf.shape(y_pred)) # for debug only
+        y_true = tf.convert_to_tensor(y_true)
+        y_pred = tf.convert_to_tensor(y_pred)
         for y_true_instance, y_pred_instance in zip(y_true, y_pred):
             self.dices.append(self.calculate_dice_image(y_true=y_true_instance, y_pred=y_pred_instance))
         
